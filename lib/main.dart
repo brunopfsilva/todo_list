@@ -21,7 +21,36 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
+  //metodo começa sempre que inicia o state do app
+  @override
+  void initState() {
+    super.initState(); //inicia a funcao
+    //funcao faz a leitura dos dados uso do then é feito para chamar outra função
+    _readData().then((data) {
+      setState(() {
+        _listTodo = json.decode(data);
+      });
+    });
+  }
+
+  final _listTodoControler = TextEditingController();
+
   List _listTodo = [];
+
+  void addToDo() {
+    setState(() {
+      //muda/actualiza a interface.
+
+      //para trabalhar com json usar dynamic no mapa
+      Map<String, dynamic> newTodo = Map();
+      //pega o texto e joga no titulo do mapa
+      newTodo["title"] = _listTodoControler.text;
+      _listTodoControler.text = "";
+      newTodo["ok"] = false;
+      _listTodo.add(newTodo);
+      _saveData();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +66,7 @@ class _HomeState extends State<Home> {
                 //Expanded oculpa o maximo de espaço possivel na largura
                 Expanded(
                   child: TextField(
+                    controller: _listTodoControler,
                     decoration: InputDecoration(
                       labelText: "Nova tarefa",
                       labelStyle: TextStyle(color: Colors.blueAccent),
@@ -47,19 +77,18 @@ class _HomeState extends State<Home> {
                   color: Colors.blueAccent,
                   child: Text("ADD"),
                   textColor: Colors.white,
-                  onPressed: () {},
+                  onPressed: addToDo,
                 )
               ],
             ),
           ),
           Expanded(
-            child: ListView.builder(
-                padding: EdgeInsets.only(top: 10.0),
+              child: ListView.builder(
+                padding: EdgeInsets.only(top: 9.0),
                 itemCount: _listTodo.length,
-                itemBuilder: (context, index) {
-
-                }),
-          )
+                //constroi o item da Listview
+                itemBuilder: itemBuilder,
+              ))
         ],
       ),
     );
@@ -67,6 +96,40 @@ class _HomeState extends State<Home> {
     //layout base separado
     return Layout.getContent(context, content);
   }
+
+  Widget itemBuilder(context, index) {
+    return Dismissible(
+      //uso da chave para pode indentificar a coluna que vai ser deletada
+      key: Key(DateTime
+          .now()
+          .millisecondsSinceEpoch
+          .toString()),
+      background: Container(
+        color: Colors.red,
+        child: Align(alignment: Alignment(0.3, 0.6),
+          child: Icon(Icons.delete, color: Colors.white,),
+        ),
+      ),
+      direction: DismissDirection.startToEnd,
+      child: CheckboxListTile(
+        title: Text(_listTodo[index]["title"]),
+        value: _listTodo[index]["ok"],
+        secondary: CircleAvatar(
+          child: Icon(
+              _listTodo[index]["ok"] ? Icons.check : Icons.error),
+        ),
+        onChanged: (c) {
+          setState(() {
+            _listTodo[index]["ok"] = c;
+            _saveData();
+          });
+        },
+      ),
+    );
+  }
+
+  /*
+     */
 
   //retorna um dado futuro
   Future<File> _getFile() async {
