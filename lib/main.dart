@@ -35,6 +35,9 @@ class _HomeState extends State<Home> {
 
   final _listTodoControler = TextEditingController();
 
+  Map<String, dynamic> _lastremove;
+  int _lastremovePos;
+
   List _listTodo = [];
 
   void addToDo() {
@@ -83,12 +86,15 @@ class _HomeState extends State<Home> {
             ),
           ),
           Expanded(
-              child: ListView.builder(
-                padding: EdgeInsets.only(top: 9.0),
-                itemCount: _listTodo.length,
-                //constroi o item da Listview
-                itemBuilder: itemBuilder,
-              ))
+              child: RefreshIndicator(
+            onRefresh: _refresh,
+            child: ListView.builder(
+              padding: EdgeInsets.only(top: 9.0),
+              itemCount: _listTodo.length,
+              //constroi o item da Listview
+              itemBuilder: itemBuilder,
+            ),
+          ))
         ],
       ),
     );
@@ -100,14 +106,15 @@ class _HomeState extends State<Home> {
   Widget itemBuilder(context, index) {
     return Dismissible(
       //uso da chave para pode indentificar a coluna que vai ser deletada
-      key: Key(DateTime
-          .now()
-          .millisecondsSinceEpoch
-          .toString()),
+      key: Key(DateTime.now().millisecondsSinceEpoch.toString()),
       background: Container(
         color: Colors.red,
-        child: Align(alignment: Alignment(0.3, 0.6),
-          child: Icon(Icons.delete, color: Colors.white,),
+        child: Align(
+          alignment: Alignment(0.3, 0.6),
+          child: Icon(
+            Icons.delete,
+            color: Colors.white,
+          ),
         ),
       ),
       direction: DismissDirection.startToEnd,
@@ -115,8 +122,7 @@ class _HomeState extends State<Home> {
         title: Text(_listTodo[index]["title"]),
         value: _listTodo[index]["ok"],
         secondary: CircleAvatar(
-          child: Icon(
-              _listTodo[index]["ok"] ? Icons.check : Icons.error),
+          child: Icon(_listTodo[index]["ok"] ? Icons.check : Icons.error),
         ),
         onChanged: (c) {
           setState(() {
@@ -125,6 +131,29 @@ class _HomeState extends State<Home> {
           });
         },
       ),
+      onDismissed: (direction) {
+        setState(() {
+          _lastremove = Map.from(_listTodo[index]);
+          _lastremovePos = index;
+          //remove na posicao
+          _listTodo.removeAt(index);
+          _saveData();
+        });
+
+        final SnackBar snackBar = SnackBar(
+          content: Text("Tarefa \"${_lastremove["title"]}\"removida"),
+          action: SnackBarAction(
+              label: "Desfazer",
+              onPressed: () {
+                setState(() {
+                  _listTodo.insert(_lastremovePos, _lastremove);
+                  _saveData();
+                });
+              }),
+          duration: Duration(seconds: 2),
+        );
+        Scaffold.of(context).showSnackBar(snackBar);
+      },
     );
   }
 
@@ -151,5 +180,27 @@ class _HomeState extends State<Home> {
     } catch (e) {
       return null;
     }
+  }
+
+  Future<void> _refresh() async {
+
+    await Future.delayed(Duration(seconds: 1));
+
+    setState(() {
+
+      _listTodo.sort((a,b){
+        if(a["ok"] && !b["ok"]) return 1;
+        else if(!a["ok"]&& b["ok"]) return -1;
+        else return 0;
+      });
+
+      _saveData();
+    });
+
+
+
+
+    return null;
+
   }
 }
